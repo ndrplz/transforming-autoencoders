@@ -1,14 +1,17 @@
-from tensorflow.examples.tutorials.mnist import input_data
-import numpy as np
 import random
+import numpy as np
+from tensorflow.examples.tutorials.mnist import input_data
+
 
 def load_train_data():
     mnist = input_data.read_data_sets('MNIST_data', one_hot=True)
     return mnist.train.images
 
+
 def load_validation_data():
     mnist = input_data.read_data_sets('MNIST_data', one_hot=True)
     return mnist.validation.images
+
 
 def translate(X_input, trans_range=5, shape=28):
     X = np.reshape(X_input, (len(X_input), shape, shape))
@@ -24,4 +27,3 @@ def translate(X_input, trans_range=5, shape=28):
         trans.append((trans_x, trans_y))
 
     return np.array(X_trans), np.array(trans), np.array(X_original)
-
