@@ -1,6 +1,9 @@
 # PyCharm stuff
 .idea/
 
+# Checkpoints
+checkpoints/
+
 # Packages
 *.gz
 *.zip

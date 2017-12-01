@@ -15,8 +15,8 @@ The architecture uses capsules to recognize an implicitly defined visual entity 
 ## Source
 
 + `capsule.py` is the complex capsule which recognizes and generates the respective visual entity. The recognition and generation weights are learnt in a self-supervised manner.
-+ `trans_ae.py` creates the above capsules for all visual entities in the data
-+ `model.py` Trains and validates the code
++ `transformer_autoencoder.py` creates the above capsules for all visual entities in the data
++ `training.py` Trains and validates the code
 
 ### Train
 ```

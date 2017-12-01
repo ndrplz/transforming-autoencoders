@@ -1,9 +1,9 @@
 import argparse
 from time import time
 from os.path import join
-from transforming_autoencoders.utils import load_train_data
-from transforming_autoencoders.utils import translate
-from transforming_autoencoders.model import ModelTrain
+from transforming_autoencoders.utils.data_handling import load_train_data
+from transforming_autoencoders.utils.data_handling import translate
+from transforming_autoencoders.training import ModelTraining
 
 
 def parse_arguments():
@@ -32,7 +32,7 @@ def main():
     X_trans, trans, X_original = translate(train_images)
 
     # Start training
-    model = ModelTrain(X_trans, trans, X_original, args)
+    model = ModelTraining(X_trans, trans, X_original, args)
     model.train()
 
 
