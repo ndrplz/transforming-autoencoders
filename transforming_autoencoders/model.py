@@ -1,6 +1,7 @@
 import time
 import os
 import sys
+import numpy as np
 import tensorflow as tf
 from transforming_autoencoders.trans_ae import TransformingAutoencoder
 
@@ -50,7 +51,7 @@ class ModelTrain:
     
     def train(self):
 
-        with tf.Graph().as_default(), tf.device('/cpu:0'):
+        with tf.Graph().as_default():
 
             global_step = tf.get_variable('global_step', [], initializer=tf.constant_initializer(0), trainable=False)
             opt = tf.train.AdamOptimizer(self.learning_rate)
@@ -62,32 +63,31 @@ class ModelTrain:
             X_batch_out = tf.placeholder(tf.float32, shape=[None, 784])
             extra_in = tf.placeholder(tf.float32, shape=[None, 2])
 
-            with tf.device('/gpu:0'):
-                with tf.name_scope('tower_{}'.format(0)) as scope:
-                    X_batch_pred = encoder.forward_pass(X_batch_in, extra_in)
-                    batch_loss = encoder.loss(X_batch_pred, X_batch_out)
-                    grads = opt.compute_gradients(batch_loss)
+            with tf.name_scope('tower_{}'.format(0)) as scope:
+                X_batch_pred = encoder.forward_pass(X_batch_in, extra_in)
+                batch_loss = encoder.loss(X_batch_pred, X_batch_out)
+                grads = opt.compute_gradients(batch_loss)
 
-                    tf.summary.scalar('loss', batch_loss)
-                    summaries = tf.get_collection(tf.GraphKeys.SUMMARIES, scope)
+                tf.summary.scalar('loss', batch_loss)
+                summaries = tf.get_collection(tf.GraphKeys.SUMMARIES, scope)
 
-                    for grad, var in grads:
-                        if grad is not None:
-                            if 'capsule' in var.op.name:
-                                if 'capsule_0' in var.op.name:
-                                    print(var.op.name)
-                                    summaries.append(tf.summary.histogram(var.op.name + '\gradients', grad))
-                            else:
-                                print('no capsule- {}'.format(var.op.name))
+                for grad, var in grads:
+                    if grad is not None:
+                        if 'capsule' in var.op.name:
+                            if 'capsule_0' in var.op.name:
+                                print(var.op.name)
                                 summaries.append(tf.summary.histogram(var.op.name + '\gradients', grad))
+                        else:
+                            print('no capsule- {}'.format(var.op.name))
+                            summaries.append(tf.summary.histogram(var.op.name + '\gradients', grad))
 
-                    with tf.name_scope('gradients_apply'):
-                        apply_gradient_op = opt.apply_gradients(grads, global_step=global_step)
+                with tf.name_scope('gradients_apply'):
+                    apply_gradient_op = opt.apply_gradients(grads, global_step=global_step)
 
-                    # Using exponential moving average => todo Check if this works
-                    with tf.name_scope('exp_moving_average'):
-                        variable_averages = tf.train.ExponentialMovingAverage(self.moving_average_decay, global_step)
-                        variable_average_op = variable_averages.apply(tf.trainable_variables())
+                # Using exponential moving average => todo Check if this works
+                with tf.name_scope('exp_moving_average'):
+                    variable_averages = tf.train.ExponentialMovingAverage(self.moving_average_decay, global_step)
+                    variable_average_op = variable_averages.apply(tf.trainable_variables())
 
             train_op = tf.group(apply_gradient_op, variable_average_op)
             summary_op = tf.summary.merge(summaries)
@@ -95,57 +95,45 @@ class ModelTrain:
             saver = tf.train.Saver(tf.global_variables(), max_to_keep=50)
             init = tf.global_variables_initializer()
 
-            config = tf.ConfigProto()
-            config.gpu_options.allow_growth = True
-            config.allow_soft_placement = True
-            sess = tf.Session(config=config)
+            with tf.Session() as sess:
 
-            total_parameters = 0
-            for variable in tf.trainable_variables():
-                shape = variable.get_shape()
-                variable_parameters = 1
-                for dim in shape:
-                    variable_parameters *= dim.value
+                def count_trainable_parameters():
+                    trainable_variables_shapes = [v.get_shape() for v in tf.trainable_variables()]
+                    return np.sum([np.prod(s) for s in trainable_variables_shapes])
+                print('Total trainable parameters: {}'.format(count_trainable_parameters()))
 
-                total_parameters += variable_parameters
+                sess.run(init)
+                print('Variables Initialized.')
 
-            print('Total Training Parameters: {}'.format(total_parameters))
+                summary_writer = tf.summary.FileWriter(self.train_dir, sess.graph)
+                print('Graph is saved.')
 
-            sess.run(init)
-            print('Variables Initialized.')
+                for epoch in range(self.num_epochs):
+                    start_time = time.time()
+                    epoch_loss = []
+                    save_summary = False
+                    if epoch % self.args.save_prediction_every == 0:
+                        save_summary = True
 
-            summary_writer = tf.summary.FileWriter(self.train_dir, sess.graph)
-            print('Graph is saved.')
+                    for step in range(self.steps_per_epoch):
 
-            for epoch in range(self.num_epochs):
-                start_time = time.time()
-                epoch_loss = []
-                saveSummary = False
-                if epoch % self.args.save_prediction_every == 0:
-                    saveSummary = True
+                        x_batch, trans_batch, x_orig_batch = self.batch_for_step(step)
+                        feed_dict = {X_batch_in: x_orig_batch, extra_in: trans_batch, X_batch_out: x_batch}
 
-                for step in range(self.steps_per_epoch):
-
-                    x_batch, trans_batch, x_orig_batch = self.batch_for_step(step)
-                    feed_dict = {X_batch_in: x_orig_batch, extra_in: trans_batch, X_batch_out: x_batch}
-
-                    if saveSummary:
                         step_loss, _, summary = sess.run([batch_loss, train_op, summary_op], feed_dict=feed_dict)
-                        summary_writer.add_summary(summary, epoch*self.steps_per_epoch + step)
-                    else:
-                        step_loss, _ = sess.run([batch_loss, train_op], feed_dict=feed_dict)
-                    epoch_loss.append(step_loss)
+                        if save_summary:
+                            summary_writer.add_summary(summary, epoch*self.steps_per_epoch + step)
+                        epoch_loss.append(step_loss)
 
-                epoch_loss = sum(epoch_loss)
-                duration_time = time.time() - start_time
-                print('Epoch {:d} with loss {:.3f}, ({:.3f} sec/step)'.format(epoch+1, epoch_loss, duration_time))
+                    epoch_loss = sum(epoch_loss)
+                    duration_time = time.time() - start_time
+                    print('Epoch {:d} with loss {:.3f}, ({:.3f} sec/step)'.format(epoch+1, epoch_loss, duration_time))
 
-                # Save model checkpoint
-                if epoch % self.args.save_checkpoint_every == 0:
-                    print('Saving model checkpoint')
-                    checkpoint_path = os.path.join(self.train_dir, 'model.ckpt')
-                    saver.save(sess, checkpoint_path, global_step=epoch)
+                    # Save model checkpoint
+                    if epoch % self.args.save_checkpoint_every == 0:
+                        print('Saving model checkpoint')
+                        checkpoint_path = os.path.join(self.train_dir, 'model.ckpt')
+                        saver.save(sess, checkpoint_path, global_step=epoch)
 
-            print('Training Complete')
-            sess.close()
-            sys.stdout.flush()
+                print('Training Complete')
+                sys.stdout.flush()

@@ -39,7 +39,6 @@ class TransformingAutoencoder:
 
     @staticmethod
     def loss(X_pred, X_out):
-
         batch_squared_error = tf.reduce_sum(tf.square(tf.subtract(X_pred, X_out)), axis=1)
         mse = tf.reduce_mean(batch_squared_error)
         return mse
