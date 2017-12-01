@@ -2,141 +2,60 @@ import time
 import os
 import sys
 import tensorflow as tf
-import numpy as np
 from transforming_autoencoders.trans_ae import TransformingAutoencoder
 
 
-FLAGS = tf.app.flags.FLAGS
-TOWER_NAME = 'tower'
-LEARNING_RATE_ADAM = 1e-4
-MOVING_AVERAGE_DECAY = 0.9999
-
-
-class ModelVerify:
-
-    def __init__(self, X_trans, trans, X_original, in_dim, r_dim, g_dim, num_capsules):
-
-        self.g_dim = g_dim
-        self.r_dim = r_dim
-        self.num_capsules = num_capsules
-        self.in_dim = in_dim
-
-        self.items = len(X_original)
-        self.steps_per_epoch = self.items // FLAGS.batch_size
-        
-        self.X_trans = X_trans
-        self.trans = trans
-        self.X_original = X_original
-
-    def batch_for_step(self, step):
-        return (self.X_trans[step*FLAGS.batch_size:(step+1)*FLAGS.batch_size],
-                self.trans[step*FLAGS.batch_size:(step+1)*FLAGS.batch_size],
-                self.X_original[step*FLAGS.batch_size:(step+1)*FLAGS.batch_size])
-
-    def eval_once(self, saver, X_batch_pred_op, batch_loss_op, X_batch_in, X_batch_out, trans):
-
-        print('Eval once')
-        config = tf.ConfigProto()
-        config.gpu_options.allow_growth=True
-        config.allow_soft_placement = True
-        with tf.Session(config=config) as sess:
-
-            print('Search checkpoint in ' + FLAGS.chk_path)
-            if FLAGS.chk_path:
-                print('Checkpoint path: ' + FLAGS.chk_path)
-                saver.restore(sess, FLAGS.chk_path)
-            else:
-                print('No checkpoint exists')
-                return
-
-            print('Checkpoint Loaded')
-
-            step = 0
-            accumulate_loss = []
-            X_accumulate_predictions = np.empty((0, self.in_dim))
-
-            while step < self.steps_per_epoch:
-                X_out_step, trans_step, X_orig_step = self.batch_for_step(step)
-                feed_dict = {X_batch_in:X_orig_step, X_batch_out:X_out_step, trans:trans_step}
-                X_batch_predictions, batch_loss_value = sess.run([X_batch_pred_op, batch_loss_op], feed_dict=feed_dict)
-                
-                X_accumulate_predictions = np.append(X_accumulate_predictions, X_batch_predictions, axis=0)
-                accumulate_loss.append(batch_loss_value)
-                step += 1
-
-            total_loss = sum(accumulate_loss)
-            print('Total Loss: {:.3f}'.format(total_loss))
-            print('Total Prediction Shape: ' + str(X_accumulate_predictions.shape))
-            return X_accumulate_predictions
-        
-    def validate(self):
-        
-        with tf.Graph().as_default(), tf.device('/cpu:0'):
-            encoder = TransformingAutoencoder(self.in_dim, self.r_dim, self.g_dim, self.num_capsules, FLAGS.batch_size)
-
-            # Input placeholders for each step
-            X_batch_in = tf.placeholder(tf.float32, shape=[None, 784])
-            X_batch_out = tf.placeholder(tf.float32, shape=[None, 784])
-            extra_in = tf.placeholder(tf.float32, shape=[None, 2])
-
-            # Only 1 GPU currently
-            with tf.device('/gpu:0'):
-                with tf.name_scope('{}_{}'.format(TOWER_NAME, 0)):
-                    X_batch_pred = encoder.forward_pass(X_batch_in, extra_in)
-                    batch_loss = encoder.loss(X_batch_pred, X_batch_out)
-
-            print('Graph created. Restore Variables from checkpoint')
-
-            variable_averages = tf.train.ExponentialMovingAverage(MOVING_AVERAGE_DECAY)
-            variables_to_restore = variable_averages.variables_to_restore()
-            saver = tf.train.Saver(variables_to_restore)
-
-            X_predictions = self.eval_once(saver, X_batch_pred, batch_loss, X_batch_in, X_batch_out, extra_in)
-
-            return X_predictions
-            
-
 class ModelTrain:
 
-    def __init__(self, X_trans, trans, X_original, num_capsules, r_dim, g_dim, in_dim, resume_from_checkpoint=None):
+    def __init__(self, X_trans, trans, X_original, args, resume_from_checkpoint=None):
 
-        self.g_dim = g_dim
-        self.r_dim = r_dim
-        self.num_capsules = num_capsules
-        self.in_dim = in_dim
+        self.g_dim  = args.generator_dim
+        self.r_dim  = args.recognizer_dim
+        self.in_dim = X_trans.shape[1]
+        self.num_capsules = args.num_capsules
 
         self.items = len(X_original)
-        self.steps_per_epoch = self.items // FLAGS.batch_size
+        self.batch_size = args.batch_size
+        self.steps_per_epoch = self.items // self.batch_size
+        self.num_epochs = args.num_epochs
+
+        # Optimization parameters
+        self.learning_rate = args.learning_rate
+        self.moving_average_decay = args.moving_average_decay
 
         self.X_trans = X_trans
         self.trans = trans
         self.X_original = X_original
 
+        # Checkpoints stuff
+        self.train_dir = args.train_dir
         self.resume_training = False
         if not resume_from_checkpoint:
-            if tf.gfile.Exists(FLAGS.train_dir):
-                tf.gfile.DeleteRecursively(FLAGS.train_dir)
-            tf.gfile.MakeDirs(FLAGS.train_dir)
+            if tf.gfile.Exists(self.train_dir):
+                tf.gfile.DeleteRecursively(self.train_dir)
+            tf.gfile.MakeDirs(self.train_dir)
         else:
             self.resumeFromCheckpoint = resume_from_checkpoint
             self.resume_training = True
             print('Resuming after checkpoint: ' + resume_from_checkpoint)
 
-        print('TRAIN Directory is {}'.format(FLAGS.train_dir))
+        self.args = args
+
+        print('TRAIN Directory is {}'.format(self.train_dir))
 
     def batch_for_step(self, step):
-        return (self.X_trans[step*FLAGS.batch_size:(step+1)*FLAGS.batch_size],
-                self.trans[step*FLAGS.batch_size:(step+1)*FLAGS.batch_size],
-                self.X_original[step*FLAGS.batch_size:(step+1)*FLAGS.batch_size])
+        return (self.X_trans[step*self.batch_size: (step+1)*self.batch_size],
+                self.trans[step*self.batch_size: (step+1)*self.batch_size],
+                self.X_original[step*self.batch_size: (step+1)*self.batch_size])
     
     def train(self):
 
         with tf.Graph().as_default(), tf.device('/cpu:0'):
 
             global_step = tf.get_variable('global_step', [], initializer=tf.constant_initializer(0), trainable=False)
-            opt = tf.train.AdamOptimizer(LEARNING_RATE_ADAM)
+            opt = tf.train.AdamOptimizer(self.learning_rate)
 
-            encoder = TransformingAutoencoder(self.in_dim, self.r_dim, self.g_dim, self.num_capsules, FLAGS.batch_size)
+            encoder = TransformingAutoencoder(self.in_dim, self.r_dim, self.g_dim, self.num_capsules, self.batch_size)
 
             # Input placeholders for each step
             X_batch_in = tf.placeholder(tf.float32, shape=[None, 784])
@@ -144,7 +63,7 @@ class ModelTrain:
             extra_in = tf.placeholder(tf.float32, shape=[None, 2])
 
             with tf.device('/gpu:0'):
-                with tf.name_scope('{}_{}'.format(TOWER_NAME, 0)) as scope:
+                with tf.name_scope('tower_{}'.format(0)) as scope:
                     X_batch_pred = encoder.forward_pass(X_batch_in, extra_in)
                     batch_loss = encoder.loss(X_batch_pred, X_batch_out)
                     grads = opt.compute_gradients(batch_loss)
@@ -165,14 +84,14 @@ class ModelTrain:
                     with tf.name_scope('gradients_apply'):
                         apply_gradient_op = opt.apply_gradients(grads, global_step=global_step)
 
-                    # Using exponential moving average => Check if this works
+                    # Using exponential moving average => todo Check if this works
                     with tf.name_scope('exp_moving_average'):
-                        variable_averages = tf.train.ExponentialMovingAverage(MOVING_AVERAGE_DECAY, global_step)
+                        variable_averages = tf.train.ExponentialMovingAverage(self.moving_average_decay, global_step)
                         variable_average_op = variable_averages.apply(tf.trainable_variables())
 
             train_op = tf.group(apply_gradient_op, variable_average_op)
             summary_op = tf.summary.merge(summaries)
-            
+
             saver = tf.train.Saver(tf.global_variables(), max_to_keep=50)
             init = tf.global_variables_initializer()
 
@@ -195,18 +114,18 @@ class ModelTrain:
             sess.run(init)
             print('Variables Initialized.')
 
-            summary_writer = tf.summary.FileWriter(FLAGS.train_dir, sess.graph)
+            summary_writer = tf.summary.FileWriter(self.train_dir, sess.graph)
             print('Graph is saved.')
-                        
-            for epoch in range(FLAGS.num_epochs):
+
+            for epoch in range(self.num_epochs):
                 start_time = time.time()
                 epoch_loss = []
                 saveSummary = False
-                if epoch % FLAGS.save_pred_every == 0:
+                if epoch % self.args.save_prediction_every == 0:
                     saveSummary = True
-                    
+
                 for step in range(self.steps_per_epoch):
-                    
+
                     x_batch, trans_batch, x_orig_batch = self.batch_for_step(step)
                     feed_dict = {X_batch_in: x_orig_batch, extra_in: trans_batch, X_batch_out: x_batch}
 
@@ -216,17 +135,17 @@ class ModelTrain:
                     else:
                         step_loss, _ = sess.run([batch_loss, train_op], feed_dict=feed_dict)
                     epoch_loss.append(step_loss)
-                    
+
                 epoch_loss = sum(epoch_loss)
                 duration_time = time.time() - start_time
                 print('Epoch {:d} with loss {:.3f}, ({:.3f} sec/step)'.format(epoch+1, epoch_loss, duration_time))
 
                 # Save model checkpoint
-                if (epoch + 1) % FLAGS.save_checkpoint_every == 0 and epoch >= FLAGS.save_checkpoint_after:
+                if epoch % self.args.save_checkpoint_every == 0:
                     print('Saving model checkpoint')
-                    checkpoint_path = os.path.join(FLAGS.train_dir, 'model.ckpt')
+                    checkpoint_path = os.path.join(self.train_dir, 'model.ckpt')
                     saver.save(sess, checkpoint_path, global_step=epoch)
-                
+
             print('Training Complete')
             sess.close()
             sys.stdout.flush()
