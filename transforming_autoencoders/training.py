@@ -1,16 +1,23 @@
-import os
-import time
 import numpy as np
 import tensorflow as tf
+from os.path import join
+from transforming_autoencoders.utils.data_handling import load_MNIST_data
+from transforming_autoencoders.utils.data_handling import translate_randomly
 from transforming_autoencoders.network.transforming_autoencoder import TransformingAutoencoder
 
 
 class ModelTraining:
 
-    def __init__(self, x_translated, translations, x_original, args, resume_from_checkpoint=None):
+    def __init__(self, args):
+
+        # Store MNIST preprocessed data
+        MNIST_data = load_MNIST_data()
+        self.data = {'train': translate_randomly(MNIST_data['train'], max_offset=5),
+                     'validation': translate_randomly(MNIST_data['validation'], max_offset=5),
+                     'test': translate_randomly(MNIST_data['validation'], max_offset=5)}
 
         # Hyper-parameters
-        self.input_dim      = x_translated.shape[1]
+        self.input_dim      = 784  # currently hardcoded on MNIST
         self.generator_dim  = args.generator_dim
         self.recognizer_dim = args.recognizer_dim
         self.num_capsules   = args.num_capsules
@@ -18,37 +25,29 @@ class ModelTraining:
         # Epoch parameters
         self.batch_size = args.batch_size
         self.num_epochs = args.num_epochs
-        self.steps_per_epoch = len(x_original) // self.batch_size
+        self.steps_per_epoch = {data_split: len(self.data[data_split]['x_original']) // self.batch_size
+                                for data_split in ['train', 'validation', 'test']}
 
         # Optimization parameters
         self.learning_rate = args.learning_rate
         self.moving_average_decay = args.moving_average_decay
 
-        # Data
-        self.x_original   = x_original
-        self.x_translated = x_translated
-        self.translations = translations
-
-        # Checkpoints stuff
+        # Checkpoints
         self.train_dir = args.train_dir
-        self.resume_training = False
-        if not resume_from_checkpoint:
-            if tf.gfile.Exists(self.train_dir):
-                tf.gfile.DeleteRecursively(self.train_dir)
-            tf.gfile.MakeDirs(self.train_dir)
-        else:
-            self.resumeFromCheckpoint = resume_from_checkpoint
-            self.resume_training = True
-            print('Resuming from checkpoint: {}.'.format(resume_from_checkpoint))
+        print('Checkpoint directory: {}'.format(self.train_dir))
 
         self.args = args
 
-        print('Checkpoint directory: {}'.format(self.train_dir))
+    def batch_for_step(self, data_split, step):
+        return (self.data[data_split]['x_translated'][step * self.batch_size: (step + 1) * self.batch_size],
+                self.data[data_split]['translations'][step * self.batch_size: (step + 1) * self.batch_size],
+                self.data[data_split]['x_original'][step * self.batch_size: (step + 1) * self.batch_size])
 
-    def batch_for_step(self, step):
-        return (self.x_translated[step * self.batch_size: (step + 1) * self.batch_size],
-                self.translations[step * self.batch_size: (step + 1) * self.batch_size],
-                self.x_original[step * self.batch_size: (step + 1) * self.batch_size])
+    def should_save_predictions(self, epoch):
+        return epoch % self.args.save_prediction_every == 0
+
+    def should_save_checkpoints(self, epoch):
+        return epoch % self.args.save_checkpoint_every == 0
 
     def train(self):
         with tf.Graph().as_default():
@@ -62,76 +61,74 @@ class ModelTraining:
             extra_input = tf.placeholder(tf.float32, shape=[None, 2])
 
             # Transforming autoencoder model
-            encoder = TransformingAutoencoder(x=autoencoder_input, target=autoencoder_target, extra_input=extra_input,
-                                              input_dim=self.input_dim, recognizer_dim=self.recognizer_dim,
-                                              generator_dim=self.generator_dim, num_capsules=self.num_capsules)
+            autoencoder = TransformingAutoencoder(x=autoencoder_input, target=autoencoder_target,
+                                                  extra_input=extra_input, input_dim=self.input_dim,
+                                                  recognizer_dim=self.recognizer_dim, generator_dim=self.generator_dim,
+                                                  num_capsules=self.num_capsules)
 
             with tf.name_scope('tower_{}'.format(0)) as scope:
 
-                gradients = opt.compute_gradients(encoder.loss)
+                gradients = opt.compute_gradients(autoencoder.loss)
 
                 summaries = tf.get_collection(tf.GraphKeys.SUMMARIES, scope)
-
                 for grad, var in gradients:
                     if grad is not None:
                         if 'capsule' in var.op.name:
                             if 'capsule_0' in var.op.name:
-                                print(var.op.name)
                                 summaries.append(tf.summary.histogram(var.op.name + '\gradients', grad))
                         else:
-                            print('no capsule- {}'.format(var.op.name))
                             summaries.append(tf.summary.histogram(var.op.name + '\gradients', grad))
 
                 with tf.name_scope('gradients_apply'):
                     apply_gradient_op = opt.apply_gradients(gradients, global_step=global_step)
 
-                # Using exponential moving average => todo Check if this works
+                # Using exponential moving average
                 with tf.name_scope('exp_moving_average'):
                     variable_averages = tf.train.ExponentialMovingAverage(self.moving_average_decay, global_step)
                     variable_average_op = variable_averages.apply(tf.trainable_variables())
 
             train_op = tf.group(apply_gradient_op, variable_average_op)
-            summaries.extend(encoder.summaries)
+
+            summaries.extend(autoencoder.summaries)
             summary_op = tf.summary.merge(summaries)
 
             saver = tf.train.Saver(tf.global_variables(), max_to_keep=50)
-            init = tf.global_variables_initializer()
 
             with tf.Session() as sess:
 
+                sess.run(tf.global_variables_initializer())
+
+                # Display the number of trainable parameters
                 def count_trainable_parameters():
                     trainable_variables_shapes = [v.get_shape() for v in tf.trainable_variables()]
                     return np.sum([np.prod(s) for s in trainable_variables_shapes])
                 print('Total trainable parameters: {}'.format(count_trainable_parameters()))
 
-                sess.run(init)
-                print('Variables Initialized.')
+                summary_writer = tf.summary.FileWriter(self.train_dir, sess.graph)  # save graph
 
-                summary_writer = tf.summary.FileWriter(self.train_dir, sess.graph)
-                print('Graph saved.')
-
+                # Training loop
                 for epoch in range(self.num_epochs):
-                    start_time = time.time()
                     epoch_loss = []
-                    save_summary = False
-                    if epoch % self.args.save_prediction_every == 0:
-                        save_summary = True
+                    for step in range(self.steps_per_epoch['train']):
+                        x_batch, trans_batch, x_orig_batch = self.batch_for_step('train', step)
 
-                    for step in range(self.steps_per_epoch):
-
-                        x_batch, trans_batch, x_orig_batch = self.batch_for_step(step)
-                        feed_dict = {autoencoder_input: x_orig_batch, extra_input: trans_batch, autoencoder_target: x_batch}
-
-                        step_loss, _, summary = sess.run([encoder.loss, train_op, summary_op], feed_dict=feed_dict)
-                        if save_summary:
-                            summary_writer.add_summary(summary, epoch*self.steps_per_epoch + step)
+                        step_loss, _ = sess.run(fetches=[autoencoder.loss, train_op],
+                                                feed_dict={autoencoder_input: x_orig_batch,
+                                                           extra_input: trans_batch,
+                                                           autoencoder_target: x_batch})
                         epoch_loss.append(step_loss)
+                    print('Epoch {:03d} - average training loss: {:.2f}'.format(epoch+1, np.mean(epoch_loss)))
 
-                    epoch_loss = sum(epoch_loss)
-                    duration_time = time.time() - start_time
-                    print('Epoch {:d} with loss {:.3f}, ({:.3f} sec/step)'.format(epoch+1, epoch_loss, duration_time))
+                    if self.should_save_predictions(epoch):
+                        print('Saving predictions on validation set...')
+                        for step in range(self.steps_per_epoch['validation']):
+                            x_batch, trans_batch, x_orig_batch = self.batch_for_step('validation', step)
+                            summary = sess.run(fetches=summary_op,
+                                               feed_dict={autoencoder_input: x_orig_batch,
+                                                          extra_input: trans_batch,
+                                                          autoencoder_target: x_batch})
+                            summary_writer.add_summary(summary, epoch * self.steps_per_epoch['validation'] + step)
 
-                    # Save model checkpoint
-                    if epoch % self.args.save_checkpoint_every == 0:
-                        checkpoint_path = os.path.join(self.train_dir, 'model.ckpt')
-                        saver.save(sess, checkpoint_path, global_step=epoch)
+                    if self.should_save_checkpoints(epoch):
+                        print('Saving checkpoints...')
+                        saver.save(sess, join(self.train_dir, 'model.ckpt'), global_step=epoch)
