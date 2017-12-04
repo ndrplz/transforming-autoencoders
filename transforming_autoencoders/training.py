@@ -2,17 +2,18 @@ import os
 import time
 import numpy as np
 import tensorflow as tf
-from transforming_autoencoders.network.transformer_autoencoder import TransformingAutoencoder
+from transforming_autoencoders.network.transforming_autoencoder import TransformingAutoencoder
 
 
 class ModelTraining:
 
     def __init__(self, x_translated, translations, x_original, args, resume_from_checkpoint=None):
 
+        # Hyper-parameters
+        self.input_dim      = x_translated.shape[1]
         self.generator_dim  = args.generator_dim
-        self.recognizer_dim  = args.recognizer_dim
-        self.input_dim = x_translated.shape[1]
-        self.num_capsules = args.num_capsules
+        self.recognizer_dim = args.recognizer_dim
+        self.num_capsules   = args.num_capsules
 
         # Epoch parameters
         self.batch_size = args.batch_size
@@ -23,9 +24,10 @@ class ModelTraining:
         self.learning_rate = args.learning_rate
         self.moving_average_decay = args.moving_average_decay
 
-        self.translations = translations
+        # Data
+        self.x_original   = x_original
         self.x_translated = x_translated
-        self.x_original = x_original
+        self.translations = translations
 
         # Checkpoints stuff
         self.train_dir = args.train_dir
@@ -47,7 +49,7 @@ class ModelTraining:
         return (self.x_translated[step * self.batch_size: (step + 1) * self.batch_size],
                 self.translations[step * self.batch_size: (step + 1) * self.batch_size],
                 self.x_original[step * self.batch_size: (step + 1) * self.batch_size])
-    
+
     def train(self):
         with tf.Graph().as_default():
 
@@ -57,10 +59,10 @@ class ModelTraining:
             # Placeholders
             autoencoder_input  = tf.placeholder(tf.float32, shape=[None, 784])
             autoencoder_target = tf.placeholder(tf.float32, shape=[None, 784])
-            extra_in = tf.placeholder(tf.float32, shape=[None, 2])
+            extra_input = tf.placeholder(tf.float32, shape=[None, 2])
 
             # Transforming autoencoder model
-            encoder = TransformingAutoencoder(x=autoencoder_input, target=autoencoder_target, extra_in=extra_in,
+            encoder = TransformingAutoencoder(x=autoencoder_input, target=autoencoder_target, extra_input=extra_input,
                                               input_dim=self.input_dim, recognizer_dim=self.recognizer_dim,
                                               generator_dim=self.generator_dim, num_capsules=self.num_capsules)
 
@@ -118,7 +120,7 @@ class ModelTraining:
                     for step in range(self.steps_per_epoch):
 
                         x_batch, trans_batch, x_orig_batch = self.batch_for_step(step)
-                        feed_dict = {autoencoder_input: x_orig_batch, extra_in: trans_batch, autoencoder_target: x_batch}
+                        feed_dict = {autoencoder_input: x_orig_batch, extra_input: trans_batch, autoencoder_target: x_batch}
 
                         step_loss, _, summary = sess.run([encoder.loss, train_op, summary_op], feed_dict=feed_dict)
                         if save_summary:

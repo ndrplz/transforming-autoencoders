@@ -4,19 +4,21 @@ from transforming_autoencoders.network.capsule import Capsule
 
 class TransformingAutoencoder:
 
-    def __init__(self, x, target, extra_in, input_dim, recognizer_dim, generator_dim, num_capsules):
+    def __init__(self, x, target, extra_input, input_dim, recognizer_dim, generator_dim, num_capsules):
 
-        self.x = x
-        self.target = target
-        self.extra_in = extra_in
+        # Placeholders
+        self.x           = x
+        self.target      = target
+        self.extra_input = extra_input
 
-        self.num_capsules = num_capsules
-        self.in_dim = input_dim
-        self.recognizer_dim  = recognizer_dim
+        # Hyper-parameters
+        self.num_capsules   = num_capsules
+        self.input_dim      = input_dim
+        self.recognizer_dim = recognizer_dim
         self.generator_dim  = generator_dim
 
         self._inference = None
-        self._loss = None
+        self._loss      = None
         self._summaries = []
 
         self.inference
@@ -26,13 +28,12 @@ class TransformingAutoencoder:
     @property
     def inference(self):
         if self._inference is None:
-            capsules_out = []
+            capsules_outputs = []
             for i in range(self.num_capsules):
                 with tf.variable_scope('capsule_{}'.format(i)):
-                    capsule = Capsule(self.in_dim, self.recognizer_dim, self.generator_dim)
-                    capsule_out = capsule.build(self.x, self.extra_in)
-                    capsules_out.append(capsule_out)
-            all_caps_out = tf.add_n(capsules_out)
+                    capsule = Capsule(self.x, self.extra_input, self.input_dim, self.recognizer_dim, self.generator_dim)
+                    capsules_outputs.append(capsule.inference)
+            all_caps_out = tf.add_n(capsules_outputs)
             self._inference = tf.sigmoid(all_caps_out)
         return self._inference
 
