@@ -36,7 +36,9 @@ optional arguments:
 
 ## Sample output
 Randomly sampled predictions on validation set after 50 training epochs:
+<p align="center">
  <img src="./docs/img/output.png" alt="Output">
+ </p>
 Hyper-parameters used in this experiment:
 ````
     num_capsules      20
