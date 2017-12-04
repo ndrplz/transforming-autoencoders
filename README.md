@@ -14,7 +14,7 @@ The recognition probablity is multiplied elementwise to the capsule output. Thus
 
 In pooling-based CNNs, activations are *invariant* (*i.e.* do not change) for small pose variations of the target visual entity. Conversely, in a trained Transforming Autoencoder the probability of visual entity is expected to be invariant as the entity moves over the manifold of possible appearances, while instantiation parameters are *equivariant* – as the viewing conditions change and the entity moves over the appearance manifold, the instantiation parameters change by a corresponding amount because they are representing the intrinsic coordinates of the entity on the appearance manifold.
 
-<p align="center"><img src="https://raw.githubusercontent.com/nikhil-dce/Transforming-Autoencoder-TF/master/extras/architecture.png" width="800"></p>
+<p align="center"><img src="https://github.com/ndrplz/capsules/tree/master/transforming_autoencoders/docs/img/architecture.png" width="800"></p>
 
 ### Usage
 Still TODO
