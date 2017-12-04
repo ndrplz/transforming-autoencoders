@@ -2,7 +2,7 @@
 
 Getting hands dirty with Hinton's capsules. In TensorFlow. 
 
-## [Transforming Autoencoders](https://github.com/ndrplz/capsules/tree/master/transforming_autoencoders)
+## Transforming Autoencoders   [(code)](https://github.com/ndrplz/capsules/tree/master/transforming_autoencoders)
 
 TensorFlow implementation of the following [paper](http://www.cs.toronto.edu/~fritz/absps/transauto6.pdf).
 
