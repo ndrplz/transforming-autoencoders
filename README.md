@@ -4,7 +4,7 @@ Getting hands dirty with Hinton's capsules. In TensorFlow.
 
 ## [Transforming Autoencoders](https://github.com/ndrplz/capsules/tree/master/transforming_autoencoders)
 
-TensorFlow implementation of the folowing [paper](http://www.cs.toronto.edu/~fritz/absps/transauto6.pdf).
+TensorFlow implementation of the following [paper](http://www.cs.toronto.edu/~fritz/absps/transauto6.pdf).
 
 > Hinton, Geoffrey E., Alex Krizhevsky, and Sida D. Wang. "Transforming auto-encoders." International Conference on Artificial Neural Networks. Springer, Berlin, Heidelberg, 2011.
 
