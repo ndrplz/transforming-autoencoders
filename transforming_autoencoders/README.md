@@ -1,4 +1,4 @@
-# Transforming-Autoencoder-TF
+# Transforming-Autoencoders
 
 TensorFlow implementation of the folowing [paper](http://www.cs.toronto.edu/~fritz/absps/transauto6.pdf).
 
@@ -33,3 +33,13 @@ optional arguments:
 * [`training.py`](https://github.com/ndrplz/capsules/tree/master/transforming_autoencoders/training.py) Contains the `ModelTraining` class used for training.
 * [`network/`](https://github.com/ndrplz/capsules/tree/master/transforming_autoencoders/network) Contains both [`Capsule`](https://github.com/ndrplz/capsules/blob/master/transforming_autoencoders/network/capsule.py) and [`Transforming Autoencoder`](https://github.com/ndrplz/capsules/blob/master/transforming_autoencoders/network/transforming_autoencoder.py) implementations.
 * [`utils/`](https://github.com/ndrplz/capsules/tree/master/transforming_autoencoders/utils) Contains utils for data handling.
+
+## Sample output
+Randomly sampled predictions on validation set after 50 training epochs:
+ <img src="./docs/img/output.png" alt="Output">
+Hyper-parameters used in this experiment:
+````
+    num_capsules      20
+    generator_dim     30
+    recognizer_dim    30
+````
