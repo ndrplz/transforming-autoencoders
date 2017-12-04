@@ -1,39 +1,16 @@
 # Transforming-Autoencoder-TF
 
-This is a tensorflow implementation of the Transforming Autoencoders.
+TensorFlow implementation of the folowing [paper](http://www.cs.toronto.edu/~fritz/absps/transauto6.pdf).
 
-The paper (http://www.cs.toronto.edu/~fritz/absps/transauto6.pdf) provides technical details of the model.
+> Hinton, Geoffrey E., Alex Krizhevsky, and Sida D. Wang. "Transforming auto-encoders." International Conference on Artificial Neural Networks. Springer, Berlin, Heidelberg, 2011.
 
-    Transforming Auto-encoders
-    Hinton, Geoffrey E. and Krizhevsky, Alex and Wang, Sida D.
-    http://dl.acm.org/citation.cfm?id=2029556.2029562
+## Usage
 
-The architecture uses capsules to recognize an implicitly defined visual entity over a domain of viewing conditions. It outputs both the probability that a particular visual entity is present and a set of "instantiation parameters" like pose, lighting and deformation of the visual entity relative to a canonical version of that entity. When this architecture is trained, the probability of visual entity is invariant as the entity moves over the manifold of possible appearances. The instantiation parameters, however, are "equivariant" -- parameters change by a corresponding amount as the viewing conditions change. 
+Still TODO
 
-<p align="center"><img src="https://raw.githubusercontent.com/nikhil-dce/Transforming-Autoencoder-TF/master/extras/architecture.png" width="800"></p>
+## Code overview
 
-## Source
-
-+ `capsule.py` is the complex capsule which recognizes and generates the respective visual entity. The recognition and generation weights are learnt in a self-supervised manner.
-+ `transformer_autoencoder.py` creates the above capsules for all visual entities in the data
-+ `training.py` Trains and validates the code
-
-### Train
-```
-python main.py
-```
-Default hyperparameters used:
-* num-capsules 60
-* generator-dimen 20
-* recognizer-dimen 10
-* num-epochs 800
-* save-pred-every 20
-* save-checkpoint-every 200
-* batch-size 100
-
-## Sample MNIST results from this implementation
-
-Column 1 is the input and Column 2 is the expected output after translation. Column 3 represents the output generated from the transforming autoencoder after training for 800 epochs.
-![Result](extras/epoch_800.png)
-
-
+* [`main.py`](https://github.com/ndrplz/capsules/tree/master/transforming_autoencoders/main.py) The code entry point.
+* [`training.py`](https://github.com/ndrplz/capsules/tree/master/transforming_autoencoders/training.py) Contains the `ModelTraining` class used for training.
+* [`network/`](https://github.com/ndrplz/capsules/tree/master/transforming_autoencoders/network) Contains both [`Capsule`](https://github.com/ndrplz/capsules/blob/master/transforming_autoencoders/network/capsule.py) and [`Transforming Autoencoder`](https://github.com/ndrplz/capsules/blob/master/transforming_autoencoders/network/transforming_autoencoder.py) implementations.
+* [`utils/`](https://github.com/ndrplz/capsules/tree/master/transforming_autoencoders/utils) Contains utils for data handling.
