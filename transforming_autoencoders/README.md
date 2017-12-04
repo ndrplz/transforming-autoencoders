@@ -6,7 +6,6 @@ TensorFlow implementation of the folowing [paper](http://www.cs.toronto.edu/~fri
 
 ## Usage
 
-Still TODO
 ````
 usage: main.py [-h] [--train_dir TRAIN_DIR] [--num_epochs] [--batch_size]
                [--save_checkpoint_every] [--save_prediction_every]
