@@ -7,7 +7,9 @@ sigmoid = tf.nn.sigmoid
 
 class Capsule(object):
 
-    def __init__(self, x, extra_input, input_dim, recognizer_dim, generator_dim):
+    def __init__(self, name, x, extra_input, input_dim, recognizer_dim, generator_dim):
+
+        self.name = name
 
         # Hyper-parameters
         self.input_dim      = input_dim
@@ -19,6 +21,7 @@ class Capsule(object):
         self.extra_input = extra_input
 
         self._inference = None
+        self._summaries = []
 
         self.inference
 
@@ -41,3 +44,11 @@ class Capsule(object):
             self._inference = tf.multiply(out, probability)
 
         return self._inference
+
+    @property
+    def summaries(self):
+        if not self._summaries:
+            output_reshaped = tf.reshape(self.inference, [-1, 28, 28])
+            self._summaries.append(tf.summary.image('{}_output'.format(self.name),
+                                                    tf.expand_dims(output_reshaped[:, :, :], -1)))
+        return self._summaries

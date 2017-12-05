@@ -17,6 +17,8 @@ class TransformingAutoencoder:
         self.recognizer_dim = recognizer_dim
         self.generator_dim  = generator_dim
 
+        self.capsules = []
+
         self._inference = None
         self._loss      = None
         self._summaries = []
@@ -28,13 +30,18 @@ class TransformingAutoencoder:
     @property
     def inference(self):
         if self._inference is None:
-            capsules_outputs = []
+
+            # Initialize the list of capsules, each uniquely identified by its name
             for i in range(self.num_capsules):
                 with tf.variable_scope('capsule_{}'.format(i)):
-                    capsule = Capsule(self.x, self.extra_input, self.input_dim, self.recognizer_dim, self.generator_dim)
-                    capsules_outputs.append(capsule.inference)
-            all_caps_out = tf.add_n(capsules_outputs)
-            self._inference = tf.sigmoid(all_caps_out)
+                    self.capsules.append(Capsule(name='capsule_{:03d}'.format(i),
+                                                 x=self.x, extra_input=self.extra_input, input_dim=self.input_dim,
+                                                 recognizer_dim=self.recognizer_dim, generator_dim=self.generator_dim))
+            capsules_outputs = [capsule.inference for capsule in self.capsules]
+
+            # Sum element-wise the output from all capsules
+            self._inference = tf.sigmoid(tf.add_n(capsules_outputs))
+
         return self._inference
 
     @property
@@ -47,12 +54,25 @@ class TransformingAutoencoder:
     @property
     def summaries(self):
         if not self._summaries:
+
+            self._summaries.append(tf.summary.scalar('autoencoder_loss', self.loss))
+
+            # Visualize autoencoder input, target and prediction
             x_reshaped = tf.reshape(self.x, [-1, 28, 28])
             x_pred_reshaped = tf.reshape(self.inference, [-1, 28, 28])
             target_reshaped = tf.reshape(self.target, [-1, 28, 28])
 
-            self._summaries.append(tf.summary.scalar('autoencoder_loss', self.loss))
             self._summaries.append(tf.summary.image('input', tf.expand_dims(x_reshaped[:, :, :], -1)))
             self._summaries.append(tf.summary.image('prediction', tf.expand_dims(x_pred_reshaped[:, :, :], -1)))
             self._summaries.append(tf.summary.image('target', tf.expand_dims(target_reshaped[:, :, :], -1)))
+
+            # Visualize the output of each capsule singularly
+            for capsule in self.capsules:
+                self._summaries.extend(capsule.summaries)
+
+            # Visualize the output of all capsules in a grid
+            capsules_outputs_reshaped = [tf.reshape(capsule.inference, [-1, 28, 28, 1]) for capsule in self.capsules]
+            concatenated_output = tf.concat(capsules_outputs_reshaped, axis=2)
+            self._summaries.append(tf.summary.image('concatenated_capsules', concatenated_output))
+
         return self._summaries
