@@ -18,13 +18,13 @@ positional arguments:
   recognizer_dim             Dimension of recognition layer
   
 optional arguments:
-  '--train_dir               Checkpoints directory (default: 'checkpoints/timestamp()')
-  '--num_epochs              Number of training epochs' (default: 100)
-  '--batch_size              Batch size (default: 64)
-  '--save_checkpoint_every   Epochs between saved checkpoints (default: 10)
-  '--save_prediction_every   Epochs between saved predictions (default: 10)
-  '--moving_average_decay    Moving average decay (default: 0.9999)
-  '--learning_rate           Learning rate of Adam optimizer (default=1e-4)
+  --train_dir               Checkpoints directory (default: 'checkpoints/timestamp()')
+  --num_epochs              Number of training epochs' (default: 100)
+  --batch_size              Batch size (default: 64)
+  --save_checkpoint_every   Epochs between saved checkpoints (default: 10)
+  --save_prediction_every   Epochs between saved predictions (default: 10)
+  --moving_average_decay    Moving average decay (default: 0.9999)
+  --learning_rate           Learning rate of Adam optimizer (default=1e-4)
 ````
 
 ## Code structure
