@@ -58,13 +58,9 @@ class TransformingAutoencoder:
             self._summaries.append(tf.summary.scalar('autoencoder_loss', self.loss))
 
             # Visualize autoencoder input, target and prediction
-            x_reshaped = tf.reshape(self.x, [-1, 28, 28])
-            x_pred_reshaped = tf.reshape(self.inference, [-1, 28, 28])
-            target_reshaped = tf.reshape(self.target, [-1, 28, 28])
-
-            self._summaries.append(tf.summary.image('input', tf.expand_dims(x_reshaped[:, :, :], -1)))
-            self._summaries.append(tf.summary.image('prediction', tf.expand_dims(x_pred_reshaped[:, :, :], -1)))
-            self._summaries.append(tf.summary.image('target', tf.expand_dims(target_reshaped[:, :, :], -1)))
+            self._summaries.append(tf.summary.image('input',     tf.reshape(self.x, [-1, 28, 28, 1])))
+            self._summaries.append(tf.summary.image('target',    tf.reshape(self.target, [-1, 28, 28, 1])))
+            self._summaries.append(tf.summary.image('inference', tf.reshape(self.inference, [-1, 28, 28, 1])))
 
             # Visualize the output of each capsule singularly
             for capsule in self.capsules:

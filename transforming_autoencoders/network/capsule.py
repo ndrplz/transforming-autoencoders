@@ -48,7 +48,7 @@ class Capsule(object):
     @property
     def summaries(self):
         if not self._summaries:
-            output_reshaped = tf.reshape(self.inference, [-1, 28, 28])
-            self._summaries.append(tf.summary.image('{}_output'.format(self.name),
-                                                    tf.expand_dims(output_reshaped[:, :, :], -1)))
+            output_reshaped = tf.reshape(self.inference, [-1, 28, 28, 1])
+            self._summaries.append(tf.summary.image('{}_output'.format(self.name), output_reshaped))
+
         return self._summaries
