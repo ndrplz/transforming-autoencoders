@@ -4,7 +4,7 @@ from transforming_autoencoders.network.capsule import Capsule
 
 class TransformingAutoencoder:
 
-    def __init__(self, x, target, extra_input, input_dim, recognizer_dim, generator_dim, num_capsules):
+    def __init__(self, x, target, extra_input, input_dim, recognizer_dim, generator_dim, num_capsules, transformation):
 
         # Placeholders
         self.x           = x
@@ -16,6 +16,9 @@ class TransformingAutoencoder:
         self.input_dim      = input_dim
         self.recognizer_dim = recognizer_dim
         self.generator_dim  = generator_dim
+
+        # Transformation applied (whether 'translation' or 'affine')
+        self.transformation = transformation
 
         self.capsules = []
 
@@ -36,7 +39,8 @@ class TransformingAutoencoder:
                 with tf.variable_scope('capsule_{}'.format(i)):
                     self.capsules.append(Capsule(name='capsule_{:03d}'.format(i),
                                                  x=self.x, extra_input=self.extra_input, input_dim=self.input_dim,
-                                                 recognizer_dim=self.recognizer_dim, generator_dim=self.generator_dim))
+                                                 recognizer_dim=self.recognizer_dim, generator_dim=self.generator_dim,
+                                                 transformation=self.transformation))
             capsules_outputs = [capsule.inference for capsule in self.capsules]
 
             # Sum element-wise the output from all capsules

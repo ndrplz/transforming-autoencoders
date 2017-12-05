@@ -2,7 +2,7 @@ import numpy as np
 import tensorflow as tf
 from os.path import join
 from transforming_autoencoders.utils.data_handling import load_MNIST_data
-from transforming_autoencoders.utils.data_handling import translate_randomly
+from transforming_autoencoders.utils.data_handling import transform_mnist_data
 from transforming_autoencoders.network.transforming_autoencoder import TransformingAutoencoder
 
 
@@ -10,17 +10,20 @@ class ModelTraining:
 
     def __init__(self, args):
 
-        # Store MNIST preprocessed data
+        # Transform and store MNIST images for each dataset split
         MNIST_data = load_MNIST_data()
-        self.data = {'train': translate_randomly(MNIST_data['train'], max_offset=5),
-                     'validation': translate_randomly(MNIST_data['validation'], max_offset=5),
-                     'test': translate_randomly(MNIST_data['validation'], max_offset=5)}
+        self.data = {data_split: transform_mnist_data(x=MNIST_data[data_split],
+                                                      transform_mode=args.transformation,
+                                                      max_translation=args.max_translation,
+                                                      sigma=args.sigma)
+                     for data_split in ['train', 'validation', 'test']}
 
         # Hyper-parameters
         self.input_dim      = 784  # currently hardcoded on MNIST
         self.generator_dim  = args.generator_dim
         self.recognizer_dim = args.recognizer_dim
         self.num_capsules   = args.num_capsules
+        self.transformation = args.transformation
 
         # Epoch parameters
         self.batch_size = args.batch_size
@@ -39,8 +42,8 @@ class ModelTraining:
         self.args = args
 
     def batch_for_step(self, data_split, step):
-        return (self.data[data_split]['x_translated'][step * self.batch_size: (step + 1) * self.batch_size],
-                self.data[data_split]['translations'][step * self.batch_size: (step + 1) * self.batch_size],
+        return (self.data[data_split]['x_transformed'][step * self.batch_size: (step + 1) * self.batch_size],
+                self.data[data_split]['transformations'][step * self.batch_size: (step + 1) * self.batch_size],
                 self.data[data_split]['x_original'][step * self.batch_size: (step + 1) * self.batch_size])
 
     def should_save_predictions(self, epoch):
@@ -58,13 +61,19 @@ class ModelTraining:
             # Placeholders
             autoencoder_input  = tf.placeholder(tf.float32, shape=[None, 784])
             autoencoder_target = tf.placeholder(tf.float32, shape=[None, 784])
-            extra_input = tf.placeholder(tf.float32, shape=[None, 2])
+
+            # Extra input placeholder has different shape according to transformation applied
+            if self.args.transformation == 'translation':
+                extra_input_shape = [None, 2]
+            elif self.args.transformation == 'affine':
+                extra_input_shape = [None, 3, 3]
+            extra_input = tf.placeholder(tf.float32, shape=extra_input_shape)
 
             # Transforming autoencoder model
             autoencoder = TransformingAutoencoder(x=autoencoder_input, target=autoencoder_target,
                                                   extra_input=extra_input, input_dim=self.input_dim,
                                                   recognizer_dim=self.recognizer_dim, generator_dim=self.generator_dim,
-                                                  num_capsules=self.num_capsules)
+                                                  num_capsules=self.num_capsules, transformation=self.transformation)
 
             with tf.name_scope('tower_{}'.format(0)) as scope:
 

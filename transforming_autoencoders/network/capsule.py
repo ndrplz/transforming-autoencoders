@@ -7,7 +7,7 @@ sigmoid = tf.nn.sigmoid
 
 class Capsule(object):
 
-    def __init__(self, name, x, extra_input, input_dim, recognizer_dim, generator_dim):
+    def __init__(self, name, x, extra_input, input_dim, recognizer_dim, generator_dim, transformation):
 
         self.name = name
 
@@ -15,6 +15,9 @@ class Capsule(object):
         self.input_dim      = input_dim
         self.recognizer_dim = recognizer_dim
         self.generator_dim  = generator_dim
+
+        # Transformation applied (whether 'translation' or 'affine')
+        self.transformation = transformation
 
         # Placeholders
         self.x           = x
@@ -31,13 +34,19 @@ class Capsule(object):
 
             recognition = dense(self.x, units=self.recognizer_dim, activation=sigmoid, name='recognition_layer')
 
-            xy_vec = dense(recognition, units=2, activation=None, name='xy_prediction')
-
             probability = dense(recognition, units=1, activation=sigmoid, name='probability')
             probability = tf.tile(probability, [1, self.input_dim])  # replicate probability s.t. it has input shape
 
-            xy_extend = tf.add(xy_vec, self.extra_input)
-            generation = dense(xy_extend, units=self.generator_dim, activation=sigmoid, name='generator_layer')
+            if self.transformation == 'translation':
+                learnt_transformation = dense(recognition, units=2, activation=None, name='xy_prediction')
+                learnt_transformation_extended = tf.add(learnt_transformation, self.extra_input)
+            else:  # self.transformation == 'affine'
+                learnt_transformation = dense(recognition, units=9, activation=None, name='xy_prediction')
+                learnt_transformation = tf.reshape(learnt_transformation, shape=[-1, 3, 3])
+                learnt_transformation_extended = tf.matmul(learnt_transformation, self.extra_input)
+                learnt_transformation_extended = tf.layers.flatten(learnt_transformation_extended)
+            generation = dense(learnt_transformation_extended,
+                               units=self.generator_dim, activation=sigmoid, name='generator_layer')
 
             out = dense(generation, units=self.input_dim, activation=None, name='output')
 
