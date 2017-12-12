@@ -10,12 +10,13 @@ TensorFlow implementation of the folowing [paper](http://www.cs.toronto.edu/~fri
 usage: main.py [-h] [--train_dir TRAIN_DIR] [--num_epochs] [--batch_size]
                [--save_checkpoint_every] [--save_prediction_every]
                [--moving_average_decay] [--learning_rate]
-               num_capsules generator_dim recognizer_dim
+               num_capsules generator_dim recognizer_dim transformation
                
 positional arguments:
   num_capsules               Number of capsules used
   generator_dim              Dimension of generator layer
   recognizer_dim             Dimension of recognition layer
+  transformation             Transformation applied (translation, affine)
   
 optional arguments:
   --train_dir               Checkpoints directory (default: 'checkpoints/timestamp()')
@@ -25,6 +26,8 @@ optional arguments:
   --save_prediction_every   Epochs between saved predictions (default: 10)
   --moving_average_decay    Moving average decay (default: 0.9999)
   --learning_rate           Learning rate of Adam optimizer (default=1e-4)
+  --max_translation         Max data translation allowed
+  --sigma                   Sigma parametrizing affine transformations
 ````
 
 ## Code structure
@@ -45,4 +48,5 @@ Hyper-parameters used in this experiment:
     num_capsules      20
     generator_dim     30
     recognizer_dim    30
+    transformation    translation
 ````
