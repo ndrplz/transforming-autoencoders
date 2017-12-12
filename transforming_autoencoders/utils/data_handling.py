@@ -6,6 +6,21 @@ from skimage.transform import AffineTransform
 from skimage.transform import warp
 
 
+class TransformingAutoencoderExample:
+    """
+    Class that models a single example for a Transforming Autoencoder.
+    
+    Each example is defined by three things:
+        - First view (image pre-transformation)
+        - Second view (image post-transformation)
+        - Transformation applied to go from the 1st to the 2nd view
+    """
+    def __init__(self, view_1, view_2, transformation):
+        self.view_1 = view_1
+        self.view_2 = view_2
+        self.transformation = transformation
+
+
 def load_MNIST_data():
     """
     Load MNIST images split into train, validation and test set.
