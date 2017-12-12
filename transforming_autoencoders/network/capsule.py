@@ -1,3 +1,4 @@
+import numpy as np
 import tensorflow as tf
 
 
@@ -7,12 +8,13 @@ sigmoid = tf.nn.sigmoid
 
 class Capsule(object):
 
-    def __init__(self, name, x, extra_input, input_dim, recognizer_dim, generator_dim, transformation):
+    def __init__(self, name, x, extra_input, input_shape, recognizer_dim, generator_dim, transformation):
 
         self.name = name
 
         # Hyper-parameters
-        self.input_dim      = input_dim
+        self.input_shape    = input_shape
+        self.input_dim      = np.prod(self.input_shape)
         self.recognizer_dim = recognizer_dim
         self.generator_dim  = generator_dim
 
@@ -32,10 +34,12 @@ class Capsule(object):
     def inference(self):
         if self._inference is None:
 
-            recognition = dense(self.x, units=self.recognizer_dim, activation=sigmoid, name='recognition_layer')
+            x_flat = tf.layers.flatten(self.x)
+
+            recognition = dense(x_flat, units=self.recognizer_dim, activation=sigmoid, name='recognition_layer')
 
             probability = dense(recognition, units=1, activation=sigmoid, name='probability')
-            probability = tf.tile(probability, [1, self.input_dim])  # replicate probability s.t. it has input shape
+            probability = tf.tile(probability, [1, self.input_dim])  # replicate probability s.t. it has input dim
 
             if self.transformation == 'translation':
                 learnt_transformation = dense(recognition, units=2, activation=None, name='xy_prediction')
@@ -48,16 +52,17 @@ class Capsule(object):
             generation = dense(learnt_transformation_extended,
                                units=self.generator_dim, activation=sigmoid, name='generator_layer')
 
-            out = dense(generation, units=self.input_dim, activation=None, name='output')
+            out_flat = dense(generation, units=self.input_dim, activation=None, name='output')
+            out_flat = tf.multiply(out_flat, probability)
 
-            self._inference = tf.multiply(out, probability)
+            self._inference = tf.reshape(out_flat, shape=[-1, self.input_shape[0], self.input_shape[1]])
 
         return self._inference
 
     @property
     def summaries(self):
         if not self._summaries:
-            output_reshaped = tf.reshape(self.inference, [-1, 28, 28, 1])
+            output_reshaped = tf.reshape(self.inference, [-1, self.input_shape[0], self.input_shape[1], 1])
             self._summaries.append(tf.summary.image('{}_output'.format(self.name), output_reshaped))
 
         return self._summaries

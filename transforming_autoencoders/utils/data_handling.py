@@ -116,8 +116,8 @@ def transform_mnist_data(x, transform_mode, max_translation=5, sigma=0.1, show=F
             plt.show()
             plt.waitforbuttonpress()
 
-        x_original.append(mnist_image.flatten())
-        x_transformed.append(transformed_image.flatten())
+        x_original.append(mnist_image)
+        x_transformed.append(transformed_image)
         transformations.append(transformation)
 
     return {'x_original': np.array(x_original),

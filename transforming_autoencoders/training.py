@@ -19,7 +19,7 @@ class ModelTraining:
                      for data_split in ['train', 'validation', 'test']}
 
         # Hyper-parameters
-        self.input_dim      = 784  # currently hardcoded on MNIST
+        self.input_shape    = [28, 28]  # currently hardcoded on MNIST
         self.generator_dim  = args.generator_dim
         self.recognizer_dim = args.recognizer_dim
         self.num_capsules   = args.num_capsules
@@ -59,8 +59,8 @@ class ModelTraining:
             opt = tf.train.AdamOptimizer(self.learning_rate)
 
             # Placeholders
-            autoencoder_input  = tf.placeholder(tf.float32, shape=[None, 784])
-            autoencoder_target = tf.placeholder(tf.float32, shape=[None, 784])
+            autoencoder_input  = tf.placeholder(tf.float32, shape=[None, self.input_shape[0], self.input_shape[1]])
+            autoencoder_target = tf.placeholder(tf.float32, shape=[None, self.input_shape[0], self.input_shape[1]])
 
             # Extra input placeholder has different shape according to transformation applied
             if self.args.transformation == 'translation':
@@ -71,7 +71,7 @@ class ModelTraining:
 
             # Transforming autoencoder model
             autoencoder = TransformingAutoencoder(x=autoencoder_input, target=autoencoder_target,
-                                                  extra_input=extra_input, input_dim=self.input_dim,
+                                                  extra_input=extra_input, input_shape=self.input_shape,
                                                   recognizer_dim=self.recognizer_dim, generator_dim=self.generator_dim,
                                                   num_capsules=self.num_capsules, transformation=self.transformation)
 
