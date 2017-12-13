@@ -89,26 +89,21 @@ def transform_mnist_data(x, transform_mode, max_translation=5, sigma=0.1, show=F
         plt.ion()
         _, [ax1, ax2] = plt.subplots(1, 2)
 
-    x_transformed, transformations, x_original = [], [], []
+    examples = []
 
     for i in np.random.permutation(len(x)):  # notice shuffling here
 
-        mnist_image = np.reshape(x[i], (28, 28))
+        mnist_image = np.reshape(x[i], (28, 28))  # MNIST is distributed flattened
 
         if transform_mode == 'translation':
-
-            translation_x = random.randint(-max_translation, max_translation)
-            translation_y = random.randint(-max_translation, max_translation)
-
+            translation_x  = random.randint(-max_translation, max_translation)
+            translation_y  = random.randint(-max_translation, max_translation)
             transformation = [translation_x, translation_y]
             transformed_image = np.roll(np.roll(mnist_image, translation_x, axis=0), translation_y, axis=1)
 
-        elif transform_mode == 'affine':
-
-            affine_matrix = get_random_affine_matrix(sigma=sigma, max_translation=max_translation)
-
-            transformation = affine_matrix
-            transformed_image = warp(mnist_image, AffineTransform(matrix=affine_matrix))
+        else:  # transform_mode == 'affine':
+            transformation = get_random_affine_matrix(sigma=sigma, max_translation=max_translation)
+            transformed_image = warp(mnist_image, AffineTransform(matrix=transformation))
 
         if show:
             ax1.imshow(mnist_image)
@@ -116,16 +111,9 @@ def transform_mnist_data(x, transform_mode, max_translation=5, sigma=0.1, show=F
             plt.show()
             plt.waitforbuttonpress()
 
-        x_original.append(mnist_image)
-        x_transformed.append(transformed_image)
-        transformations.append(transformation)
+        example = TransformingAutoencoderExample(view_1=mnist_image,
+                                                 view_2=transformed_image,
+                                                 transformation=transformation)
+        examples.append(example)
 
-    return {'x_original': np.array(x_original),
-            'x_transformed': np.array(x_transformed),
-            'transformations': np.array(transformations)}
-
-
-if __name__ == '__main__':
-    train_images = load_MNIST_data()['train']
-
-    transform_mnist_data(train_images, transform_mode='affine', sigma=0.2, max_translation=2, show=True)
+    return examples

@@ -19,7 +19,7 @@ class ModelTraining:
                      for data_split in ['train', 'validation', 'test']}
 
         # Hyper-parameters
-        self.input_shape    = [28, 28]  # currently hardcoded on MNIST
+        self.input_shape    = self.data['train'][0].view_1.shape
         self.generator_dim  = args.generator_dim
         self.recognizer_dim = args.recognizer_dim
         self.num_capsules   = args.num_capsules
@@ -28,7 +28,7 @@ class ModelTraining:
         # Epoch parameters
         self.batch_size = args.batch_size
         self.num_epochs = args.num_epochs
-        self.steps_per_epoch = {data_split: len(self.data[data_split]['x_original']) // self.batch_size
+        self.steps_per_epoch = {data_split: len(self.data[data_split]) // self.batch_size
                                 for data_split in ['train', 'validation', 'test']}
 
         # Optimization parameters
@@ -42,9 +42,10 @@ class ModelTraining:
         self.args = args
 
     def batch_for_step(self, data_split, step):
-        return (self.data[data_split]['x_transformed'][step * self.batch_size: (step + 1) * self.batch_size],
-                self.data[data_split]['transformations'][step * self.batch_size: (step + 1) * self.batch_size],
-                self.data[data_split]['x_original'][step * self.batch_size: (step + 1) * self.batch_size])
+        dataset_batch = self.data[data_split][step * self.batch_size: (step + 1) * self.batch_size]
+        return ([x.view_1 for x in dataset_batch],
+                [x.view_2 for x in dataset_batch],
+                [x.transformation for x in dataset_batch])
 
     def should_save_predictions(self, epoch):
         return epoch % self.args.save_prediction_every == 0
@@ -119,23 +120,23 @@ class ModelTraining:
                 for epoch in range(self.num_epochs):
                     epoch_loss = []
                     for step in range(self.steps_per_epoch['train']):
-                        x_batch, trans_batch, x_orig_batch = self.batch_for_step('train', step)
+                        x_view_1_batch, x_view_2_batch, trans_batch = self.batch_for_step('train', step)
 
                         step_loss, _ = sess.run(fetches=[autoencoder.loss, train_op],
-                                                feed_dict={autoencoder_input: x_orig_batch,
-                                                           extra_input: trans_batch,
-                                                           autoencoder_target: x_batch})
+                                                feed_dict={autoencoder_input:  x_view_1_batch,
+                                                           autoencoder_target: x_view_2_batch,
+                                                           extra_input: trans_batch})
                         epoch_loss.append(step_loss)
                     print('Epoch {:03d} - average training loss: {:.2f}'.format(epoch+1, np.mean(epoch_loss)))
 
                     if self.should_save_predictions(epoch):
                         print('Saving predictions on validation set...')
                         for step in range(self.steps_per_epoch['validation']):
-                            x_batch, trans_batch, x_orig_batch = self.batch_for_step('validation', step)
+                            x_view_1_batch, x_view_2_batch, trans_batch = self.batch_for_step('validation', step)
                             summary = sess.run(fetches=summary_op,
-                                               feed_dict={autoencoder_input: x_orig_batch,
-                                                          extra_input: trans_batch,
-                                                          autoencoder_target: x_batch})
+                                               feed_dict={autoencoder_input:  x_view_1_batch,
+                                                          autoencoder_target: x_view_2_batch,
+                                                          extra_input: trans_batch})
                             summary_writer.add_summary(summary, epoch * self.steps_per_epoch['validation'] + step)
 
                     if self.should_save_checkpoints(epoch):
