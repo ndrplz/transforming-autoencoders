@@ -20,6 +20,24 @@ class TransformingAutoencoderExample:
         self.view_2 = view_2
         self.transformation = transformation
 
+    def show(self, subplots):
+        """
+        Display TransformingAutoencoderExample on matplotlib subplot
+
+        Parameters
+        ----------
+        subplots: (fig, axes)
+            Return value from `matplotlib.pyplot.subplots(1, 2)`
+            
+        Returns
+        -------
+        None
+        """
+        fig, axes = subplots
+        fig.suptitle('Transformation: {}'.format(self.transformation))
+        axes[0].imshow(self.view_1, cmap='gray')
+        axes[1].imshow(self.view_2, cmap='gray')
+
 
 def load_MNIST_data():
     """
