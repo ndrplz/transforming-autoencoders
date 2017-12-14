@@ -1,58 +1,9 @@
 import random
 import numpy as np
 import matplotlib.pyplot as plt
-from tensorflow.examples.tutorials.mnist import input_data
 from skimage.transform import AffineTransform
 from skimage.transform import warp
-
-
-class TransformingAutoencoderExample:
-    """
-    Class that models a single example for a Transforming Autoencoder.
-    
-    Each example is defined by three things:
-        - First view (image pre-transformation)
-        - Second view (image post-transformation)
-        - Transformation applied to go from the 1st to the 2nd view
-    """
-    def __init__(self, view_1, view_2, transformation):
-        self.view_1 = view_1
-        self.view_2 = view_2
-        self.transformation = transformation
-
-    def show(self, subplots):
-        """
-        Display TransformingAutoencoderExample on matplotlib subplot
-
-        Parameters
-        ----------
-        subplots: (fig, axes)
-            Return value from `matplotlib.pyplot.subplots(1, 2)`
-            
-        Returns
-        -------
-        None
-        """
-        fig, axes = subplots
-        fig.suptitle('Transformation: {}'.format(self.transformation))
-        axes[0].imshow(self.view_1, cmap='gray')
-        axes[1].imshow(self.view_2, cmap='gray')
-
-
-def load_MNIST_data():
-    """
-    Load MNIST images split into train, validation and test set.
-
-    Returns
-    -------
-    mnist_dict: dict
-        Dictionary with keys ['train', 'validation', 'test'], 
-        containing respective images data 
-    """
-    mnist = input_data.read_data_sets('data', one_hot=True)
-    return {'train': mnist.train.images,
-            'validation': mnist.validation.images,
-            'test': mnist.test.images}
+from transforming_autoencoders.utils.data_structures import TransformingAutoencoderExample
 
 
 def get_random_affine_matrix(sigma, max_translation):

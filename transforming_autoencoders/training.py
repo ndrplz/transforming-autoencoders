@@ -1,22 +1,16 @@
 import numpy as np
 import tensorflow as tf
 from os.path import join
-from transforming_autoencoders.utils.data_handling import load_MNIST_data
-from transforming_autoencoders.utils.data_handling import transform_mnist_data
 from transforming_autoencoders.network.transforming_autoencoder import TransformingAutoencoder
+from transforming_autoencoders.utils.data_load import DataLoader
 
 
 class ModelTraining:
 
     def __init__(self, args):
 
-        # Transform and store MNIST images for each dataset split
-        MNIST_data = load_MNIST_data()
-        self.data = {data_split: transform_mnist_data(x=MNIST_data[data_split],
-                                                      transform_mode=args.transformation,
-                                                      max_translation=args.max_translation,
-                                                      sigma=args.sigma)
-                     for data_split in ['train', 'validation', 'test']}
+        # Load data according to `args.dataset`
+        self.data = DataLoader(args).load_data()
 
         # Hyper-parameters
         self.input_shape    = self.data['train'][0].view_1.shape
