@@ -54,15 +54,17 @@ class ModelTraining:
             opt = tf.train.AdamOptimizer(self.learning_rate)
 
             # Placeholders
-            autoencoder_input  = tf.placeholder(tf.float32, shape=[None, self.input_shape[0], self.input_shape[1]])
-            autoencoder_target = tf.placeholder(tf.float32, shape=[None, self.input_shape[0], self.input_shape[1]])
+            autoencoder_input  = tf.placeholder(tf.float32, shape=[None, self.input_shape[0], self.input_shape[1]],
+                                                name='placeholder_input')
+            autoencoder_target = tf.placeholder(tf.float32, shape=[None, self.input_shape[0], self.input_shape[1]],
+                                                name='placeholder_target')
 
             # Extra input placeholder has different shape according to transformation applied
             if self.args.transformation == 'translation':
                 extra_input_shape = [None, 2]
             elif self.args.transformation == 'affine':
                 extra_input_shape = [None, 3, 3]
-            extra_input = tf.placeholder(tf.float32, shape=extra_input_shape)
+            extra_input = tf.placeholder(tf.float32, shape=extra_input_shape, name='placeholder_transformation')
 
             # Transforming autoencoder model
             autoencoder = TransformingAutoencoder(x=autoencoder_input, target=autoencoder_target,

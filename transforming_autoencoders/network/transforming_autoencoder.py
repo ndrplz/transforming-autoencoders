@@ -44,7 +44,7 @@ class TransformingAutoencoder:
             capsules_outputs = [capsule.inference for capsule in self.capsules]
 
             # Sum element-wise the output from all capsules
-            self._inference = tf.sigmoid(tf.add_n(capsules_outputs))
+            self._inference = tf.sigmoid(tf.add_n(capsules_outputs), name='autoencoder_inference')
 
         return self._inference
 
