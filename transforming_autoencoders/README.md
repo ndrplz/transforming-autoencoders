@@ -7,33 +7,60 @@ TensorFlow implementation of the folowing [paper](http://www.cs.toronto.edu/~fri
 ## Usage
 
 ````
-usage: main.py [-h] [--train_dir TRAIN_DIR] [--num_epochs] [--batch_size]
-               [--save_checkpoint_every] [--save_prediction_every]
-               [--moving_average_decay] [--learning_rate]
-               num_capsules generator_dim recognizer_dim transformation
-               
+usage: main.py [-h] [--transformation {translation,affine}] [-n NUM_CAPSULES]
+               [-g GENERATOR_DIM] [-r RECOGNIZER_DIM] [--dataset {mnist,norb}]
+               [--train_dir TRAIN_DIR] [--num_epochs NUM_EPOCHS]
+               [--batch_size BATCH_SIZE]
+               [--save_checkpoint_every SAVE_CHECKPOINT_EVERY]
+               [--save_prediction_every SAVE_PREDICTION_EVERY]
+               [--moving_average_decay MOVING_AVERAGE_DECAY]
+               [--learning_rate LEARNING_RATE]
+               [--max_translation MAX_TRANSLATION] [--sigma SIGMA] [--gpu GPU]
+               [--restore_checkpoint RESTORE_CHECKPOINT]
+               {train,test}
+
 positional arguments:
-  num_capsules               Number of capsules used
-  generator_dim              Dimension of generator layer
-  recognizer_dim             Dimension of recognition layer
-  transformation             Transformation applied (translation, affine)
-  
+  {train,test}          Choose mode (`train` or `test`)
+
 optional arguments:
-  --train_dir               Checkpoints directory (default: 'checkpoints/timestamp()')
-  --num_epochs              Number of training epochs' (default: 100)
-  --batch_size              Batch size (default: 64)
-  --save_checkpoint_every   Epochs between saved checkpoints (default: 10)
-  --save_prediction_every   Epochs between saved predictions (default: 10)
-  --moving_average_decay    Moving average decay (default: 0.9999)
-  --learning_rate           Learning rate of Adam optimizer (default=1e-4)
-  --max_translation         Max data translation allowed
-  --sigma                   Sigma parametrizing affine transformations
+  -h, --help            show this help message and exit
+  --transformation {translation,affine}
+                        Transformation
+  -n NUM_CAPSULES, --num_capsules NUM_CAPSULES
+                        Number of capsules
+  -g GENERATOR_DIM, --generator_dim GENERATOR_DIM
+                        Dimension (neurons) of generator layer
+  -r RECOGNIZER_DIM, --recognizer_dim RECOGNIZER_DIM
+                        Dimension (neurons) of recognition layer
+  --dataset {mnist,norb}
+                        Dataset to use.
+  --train_dir TRAIN_DIR
+                        Checkpoints directory
+  --num_epochs NUM_EPOCHS
+                        Number of training epochs
+  --batch_size BATCH_SIZE
+                        Batch size
+  --save_checkpoint_every SAVE_CHECKPOINT_EVERY
+                        Epochs between saved checkpoints
+  --save_prediction_every SAVE_PREDICTION_EVERY
+                        Epochs between saved predictions
+  --moving_average_decay MOVING_AVERAGE_DECAY
+                        Moving average decay
+  --learning_rate LEARNING_RATE
+                        Learning rate of Adam optimizer
+  --max_translation MAX_TRANSLATION
+                        Max data translation allowed
+  --sigma SIGMA         Sigma parametrizing affine transformations
+  --gpu GPU             Which GPU to use in case of multiple GPUs (default=0)
+  --restore_checkpoint RESTORE_CHECKPOINT
+                        Path to restore checkpoint (in `test` mode)
 ````
 
 ## Code structure
 
 * [`main.py`](https://github.com/ndrplz/capsules/tree/master/transforming_autoencoders/main.py) The code entry point.
 * [`training.py`](https://github.com/ndrplz/capsules/tree/master/transforming_autoencoders/training.py) Contains the `ModelTraining` class used for training.
+* [`testing.py`](https://github.com/ndrplz/capsules/tree/master/transforming_autoencoders/training.py) Contains the `ModelTesting` class used for interactively test the model.
 * [`network/`](https://github.com/ndrplz/capsules/tree/master/transforming_autoencoders/network) Contains both [`Capsule`](https://github.com/ndrplz/capsules/blob/master/transforming_autoencoders/network/capsule.py) and [`Transforming Autoencoder`](https://github.com/ndrplz/capsules/blob/master/transforming_autoencoders/network/transforming_autoencoder.py) implementations.
 * [`utils/`](https://github.com/ndrplz/capsules/tree/master/transforming_autoencoders/utils) Contains utils for data handling.
 
