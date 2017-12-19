@@ -1,5 +1,6 @@
 import numpy as np
 import tensorflow as tf
+from tqdm import tqdm
 from os.path import join
 from transforming_autoencoders.network.transforming_autoencoder import TransformingAutoencoder
 from transforming_autoencoders.utils.data_load import DataLoader
@@ -115,7 +116,7 @@ class ModelTraining:
                 # Training loop
                 for epoch in range(self.num_epochs):
                     epoch_loss = []
-                    for step in range(self.steps_per_epoch['train']):
+                    for step in tqdm(range(self.steps_per_epoch['train'])):
                         x_view_1_batch, x_view_2_batch, trans_batch = self.batch_for_step('train', step)
 
                         step_loss, _ = sess.run(fetches=[autoencoder.loss, train_op],
