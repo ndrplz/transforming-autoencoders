@@ -179,9 +179,9 @@ class ModelTesting:
                     """ Remove dummy batch dimension from input `x` """
                     return np.squeeze(x)
 
-                axes[0].imshow(prepare_for_visualization(mnist_image))
+                axes[0].imshow(prepare_for_visualization(mnist_image), cmap='gray')
                 axes[0].set_title('Input')
-                axes[1].imshow(prepare_for_visualization(inference_output))
+                axes[1].imshow(prepare_for_visualization(inference_output), cmap='gray')
                 axes[1].set_title('Output')
                 plt.draw()
                 plt.waitforbuttonpress()
