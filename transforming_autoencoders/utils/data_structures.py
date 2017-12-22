@@ -1,3 +1,6 @@
+import numpy as np
+
+
 class TransformingAutoencoderExample:
     """
     Class that models a single example for a Transforming Autoencoder.
@@ -28,5 +31,5 @@ class TransformingAutoencoderExample:
         """
         fig, axes = subplots
         fig.suptitle('Transformation: {}'.format(self.transformation))
-        axes[0].imshow(self.view_1, cmap='gray')
-        axes[1].imshow(self.view_2, cmap='gray')
+        axes[0].imshow(np.squeeze(self.view_1), cmap='gray')
+        axes[1].imshow(np.squeeze(self.view_2), cmap='gray')
