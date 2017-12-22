@@ -55,14 +55,13 @@ class Capsule(object):
             out_flat = dense(generation, units=self.input_dim, activation=None, name='output')
             out_flat = tf.multiply(out_flat, probability)
 
-            self._inference = tf.reshape(out_flat, shape=[-1, self.input_shape[0], self.input_shape[1]])
+            self._inference = tf.reshape(out_flat, shape=[-1] + list(self.input_shape))
 
         return self._inference
 
     @property
     def summaries(self):
         if not self._summaries:
-            output_reshaped = tf.reshape(self.inference, [-1, self.input_shape[0], self.input_shape[1], 1])
-            self._summaries.append(tf.summary.image('{}_output'.format(self.name), output_reshaped))
+            self._summaries.append(tf.summary.image('{}_output'.format(self.name), self.inference))
 
         return self._summaries

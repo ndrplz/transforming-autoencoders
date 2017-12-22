@@ -64,17 +64,17 @@ class TransformingAutoencoder:
             self._summaries.append(tf.summary.scalar('autoencoder_loss', self.loss))
 
             # Visualize autoencoder input, target and prediction
-            height, width = self.input_shape
-            self._summaries.append(tf.summary.image('input', tf.reshape(self.x, [-1, height, width, 1])))
-            self._summaries.append(tf.summary.image('target', tf.reshape(self.target, [-1, height, width, 1])))
-            self._summaries.append(tf.summary.image('inference', tf.reshape(self.inference, [-1, height, width, 1])))
+
+            self._summaries.append(tf.summary.image('input', self.x))
+            self._summaries.append(tf.summary.image('target', self.target))
+            self._summaries.append(tf.summary.image('inference', self.inference))
 
             # Visualize the output of each capsule singularly
             for capsule in self.capsules:
                 self._summaries.extend(capsule.summaries)
 
             # Visualize the output of all capsules in a grid
-            capsules_outputs_reshaped = [tf.reshape(capsule.inference, [-1, height, width, 1]) for capsule in self.capsules]
+            capsules_outputs_reshaped = [capsule.inference for capsule in self.capsules]
             concatenated_output = tf.concat(capsules_outputs_reshaped, axis=2)
             self._summaries.append(tf.summary.image('concatenated_capsules', concatenated_output))
 

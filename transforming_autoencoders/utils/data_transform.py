@@ -80,8 +80,8 @@ def transform_mnist_data(x, transform_mode, max_translation=5, sigma=0.1, show=F
             plt.show()
             plt.waitforbuttonpress()
 
-        example = TransformingAutoencoderExample(view_1=mnist_image,
-                                                 view_2=transformed_image,
+        example = TransformingAutoencoderExample(view_1=np.expand_dims(mnist_image, axis=-1),
+                                                 view_2=np.expand_dims(transformed_image, axis=-1),
                                                  transformation=transformation)
         examples.append(example)
 
