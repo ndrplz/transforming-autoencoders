@@ -68,12 +68,24 @@ Below, qualitative results of implemented transforming autoencoder on MNIST vali
 
 It can be noticed that, **despite the appearence is still slightly blurry, the autoencoder successfully learnt the underlying transformation matrix**.
 
+### Affine transform
+
 <p align="center"><img src="https://github.com/ndrplz/transforming-autoencoders/blob/master/docs/img/showcase_affine.png" alt="MNIST affine results" align="center" width="40%" height="40%"></p>
 
-To reproduce the above results: 
+To reproduce the above result: 
 ````
 python main.py train -n 30 -g 50 -r 50 --dataset mnist --transformation affine --num_epochs 200
 ````
+
+### Translation
+
+<p align="center"><img src="https://github.com/ndrplz/transforming-autoencoders/blob/master/docs/img/showcase_translation.png" alt="MNIST affine results" align="center" width="40%" height="40%"></p>
+
+To reproduce the above result: 
+````
+python main.py train -n 30 -g 50 -r 50 --dataset mnist --transformation translation --num_epochs 200
+````
+
 ### Code
 
 Transforming Autoencoder implementation and more detailed code structure description can be found in [`transforming_autoencoders/`](https://github.com/ndrplz/capsules/tree/master/transforming_autoencoders)
