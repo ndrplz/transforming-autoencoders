@@ -34,6 +34,12 @@ class ModelTraining:
         self.train_dir = args.train_dir
         print('Checkpoint directory: {}'.format(self.train_dir))
 
+        # Summary writers
+        self.writers = {
+            'train': tf.summary.FileWriter(join(self.train_dir, 'train')),
+            'validation': tf.summary.FileWriter(join(self.train_dir, 'validation'))
+        }
+
         self.args = args
 
     def batch_for_step(self, data_split, step):
@@ -41,6 +47,13 @@ class ModelTraining:
         return ([x.view_1 for x in dataset_batch],
                 [x.view_2 for x in dataset_batch],
                 [x.transformation for x in dataset_batch])
+
+    def random_batch(self, data_split):
+        random_indexes = np.random.randint(0, len(self.data[data_split]), size=self.batch_size)
+        random_batch   = [self.data[data_split][i] for i in random_indexes]
+        return ([x.view_1 for x in random_batch],
+                [x.view_2 for x in random_batch],
+                [x.transformation for x in random_batch])
 
     def should_save_predictions(self, epoch):
         return epoch % self.args.save_prediction_every == 0
@@ -77,15 +90,6 @@ class ModelTraining:
 
                 gradients = opt.compute_gradients(autoencoder.loss)
 
-                summaries = tf.get_collection(tf.GraphKeys.SUMMARIES, scope)
-                for grad, var in gradients:
-                    if grad is not None:
-                        if 'capsule' in var.op.name:
-                            if 'capsule_0' in var.op.name:
-                                summaries.append(tf.summary.histogram(var.op.name + '\gradients', grad))
-                        else:
-                            summaries.append(tf.summary.histogram(var.op.name + '\gradients', grad))
-
                 with tf.name_scope('gradients_apply'):
                     apply_gradient_op = opt.apply_gradients(gradients, global_step=global_step)
 
@@ -96,8 +100,8 @@ class ModelTraining:
 
             train_op = tf.group(apply_gradient_op, variable_average_op)
 
-            summaries.extend(autoencoder.summaries)
-            summary_op = tf.summary.merge(summaries)
+            scalar_summary_op = tf.summary.merge([s for s in autoencoder.summaries if 'autoencoder_loss' in s.name])
+            image_summary_op  = tf.summary.merge([s for s in autoencoder.summaries if 'autoencoder_loss' not in s.name])
 
             saver = tf.train.Saver(tf.global_variables(), max_to_keep=50)
 
@@ -111,30 +115,44 @@ class ModelTraining:
                     return np.sum([np.prod(s) for s in trainable_variables_shapes])
                 print('Total trainable parameters: {}'.format(count_trainable_parameters()))
 
-                summary_writer = tf.summary.FileWriter(self.train_dir, sess.graph)  # save graph
-
                 # Training loop
                 for epoch in range(self.num_epochs):
-                    epoch_loss = []
-                    for step in tqdm(range(self.steps_per_epoch['train'])):
-                        x_view_1_batch, x_view_2_batch, trans_batch = self.batch_for_step('train', step)
 
-                        step_loss, _ = sess.run(fetches=[autoencoder.loss, train_op],
-                                                feed_dict={autoencoder_input:  x_view_1_batch,
-                                                           autoencoder_target: x_view_2_batch,
-                                                           extra_input: trans_batch})
+                    epoch_loss = []
+
+                    for step in tqdm(range(self.steps_per_epoch['train'])):
+
+                        global_step = epoch * self.steps_per_epoch['train'] + step
+
+                        # Perform one training step
+                        x_view_1_batch, x_view_2_batch, trans_batch = self.batch_for_step('train', step)
+                        step_loss, _, loss_summary = sess.run(fetches=[autoencoder.loss, train_op, scalar_summary_op],
+                                                              feed_dict={autoencoder_input:  x_view_1_batch,
+                                                                         autoencoder_target: x_view_2_batch,
+                                                                         extra_input: trans_batch})
+                        self.writers['train'].add_summary(loss_summary, global_step)
+
                         epoch_loss.append(step_loss)
+
+                        # Save loss summary on validation set
+                        x_view_1_batch, x_view_2_batch, trans_batch = self.random_batch('validation')
+                        loss_summary, = sess.run(fetches=[scalar_summary_op],
+                                                 feed_dict={autoencoder_input: x_view_1_batch,
+                                                            autoencoder_target: x_view_2_batch,
+                                                            extra_input: trans_batch})
+                        self.writers['validation'].add_summary(loss_summary, global_step)
+
                     print('Epoch {:03d} - average training loss: {:.2f}'.format(epoch+1, np.mean(epoch_loss)))
 
                     if self.should_save_predictions(epoch):
-                        print('Saving predictions on validation set...')
-                        for step in range(self.steps_per_epoch['validation']):
-                            x_view_1_batch, x_view_2_batch, trans_batch = self.batch_for_step('validation', step)
-                            summary = sess.run(fetches=summary_op,
-                                               feed_dict={autoencoder_input:  x_view_1_batch,
-                                                          autoencoder_target: x_view_2_batch,
-                                                          extra_input: trans_batch})
-                            summary_writer.add_summary(summary, epoch * self.steps_per_epoch['validation'] + step)
+                        for data_split in ['train', 'validation']:
+                            print('Saving predictions on {} set...'.format(data_split))
+                            x_view_1_batch, x_view_2_batch, trans_batch = self.random_batch(data_split)
+                            image_summary = sess.run(fetches=image_summary_op,
+                                                     feed_dict={autoencoder_input:  x_view_1_batch,
+                                                                autoencoder_target: x_view_2_batch,
+                                                                extra_input: trans_batch})
+                            self.writers[data_split].add_summary(image_summary, global_step)
 
                     if self.should_save_checkpoints(epoch):
                         print('Saving checkpoints...')
