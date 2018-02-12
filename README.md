@@ -88,4 +88,4 @@ python main.py train -n 30 -g 50 -r 50 --dataset mnist --transformation translat
 
 ### Code
 
-Transforming Autoencoder implementation and more detailed code structure description can be found in [`transforming_autoencoders/`](https://github.com/ndrplz/capsules/tree/master/transforming_autoencoders)
+Transforming Autoencoder implementation and more detailed code structure description can be found in [`transforming_autoencoders/`](transforming_autoencoders)
